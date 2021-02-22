@@ -1,7 +1,5 @@
 package helper;
 
-import lombok.val;
-
 public class Constants {
     // Date time format
     public static final String DEFAULT_DATE_FORMAT = "dd/MM/yyyy";
@@ -14,5 +12,5 @@ public class Constants {
     public static final String PASSWORD = PropertiesHelper.getPropValue("credentials.password");
     public static final String BASIC_AUTH = PropertiesHelper.getPropValue("basic.auth");
 
-    public static final String REPORT_TEMPLATE_FILE = PropertiesHelper.getPropValue("report.template.file");
+    public static final String REPORT_TEMPLATE_FILE = PropertiesHelper.getPropValue("report.file");
 }

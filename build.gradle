@@ -1,5 +1,11 @@
 plugins {
-    id 'java'
+    id 'application'
+}
+
+apply plugin: 'application'
+
+application {
+    mainClassName = 'excel.report.Main'
 }
 
 group 'org.example'
