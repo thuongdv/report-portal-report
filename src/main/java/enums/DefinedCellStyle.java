@@ -1,0 +1,6 @@
+package enums;
+
+public enum DefinedCellStyle {
+    WRAP_TEXT, ALIGN_CENTER, BORDER_ALL, SET_COLOR_LIGHT_GREEN, SET_COLOR_LIGHT_BLUE,
+    FORMAT_AS_TEXT, TOP_ALIGN
+}
