@@ -51,7 +51,7 @@ public class PropertiesHelper {
                 try {
                     _props.load(new StringReader(props));
                 } catch (IOException e) {
-                    System.err.println(e);
+                    e.printStackTrace();
                 }
             }
         }

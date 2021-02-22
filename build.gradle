@@ -8,6 +8,10 @@ application {
     mainClassName = 'excel.report.Main'
 }
 
+run {
+    systemProperties System.getProperties()
+}
+
 group 'org.example'
 version '1.0-SNAPSHOT'
 
