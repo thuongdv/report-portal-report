@@ -1,7 +1,9 @@
 package excel.report.dao;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import enums.FeatureType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,8 +23,16 @@ public class Suite {
     @JsonProperty("statistics")
     Statistics statistics;
 
+    @JsonIgnore
+    FeatureType type;
+
     public String getName() {
         return this.name.replace("Feature: ", "");
+    }
+
+    public FeatureType getType() {
+        if (this.name.contains("NON-CR")) return FeatureType.NON_CR;
+        return FeatureType.CR;
     }
 
     public String getStatus() {

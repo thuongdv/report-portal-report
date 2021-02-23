@@ -1,16 +1,13 @@
 package excel.report;
 
 import enums.DefinedCellStyle;
+import enums.FeatureType;
 import excel.report.dao.Suite;
 import excel.report.dao.Test;
 import helper.APIHelper;
 import helper.Constants;
-import helper.DateTimeHelper;
 import helper.ExcelHelper;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.SneakyThrows;
+import lombok.*;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 
@@ -22,58 +19,62 @@ import java.util.stream.Collectors;
 
 public class RP2Excel {
 
-    private String sheetName;
-    private ExcelHelper excelHelper;
-    private static final int NEW_SHEET_POSITION = 1;
+    private static final String NON_CR_SHEET_NAME = "Non-CR";
+    private static final String CR_SHEET_NAME = "CR";
+    private static final int NON_CR_SHEET_POSITION = 1;
+    private static final int CR_SHEET_POSITION = 2;
     private static final int HEADER_ROW_IDX = 0;
     private static final int START_ROW_IDX = 1;
     private static final int START_COL_IDX = 1;
 
+    private ExcelHelper excelHelper;
+
     @SneakyThrows
     public void generate(String toFile) {
         this.excelHelper = new ExcelHelper(toFile);
-        this.sheetName = DateTimeHelper.getToday("yyyy-MM-dd_HH-mm-ss");
 
-        this.createNewSheet();
-        this.writeHeader();
-        this.writeData();
-        this.formatData();
+        List<Suite> suites = this.getSuites();
+        val nonCRSuites = suites.parallelStream().filter(e -> e.getType() == FeatureType.NON_CR).collect(Collectors.toList());
+        val crSuites = suites.parallelStream().filter(e -> e.getType() == FeatureType.CR).collect(Collectors.toList());
+        this.writeDataToSheet(nonCRSuites, NON_CR_SHEET_NAME, NON_CR_SHEET_POSITION);
+        this.writeDataToSheet(crSuites, CR_SHEET_NAME, CR_SHEET_POSITION);
         this.finish();
     }
 
-    @SneakyThrows
-    private void createNewSheet() {
-        this.excelHelper.createSheet(this.sheetName, NEW_SHEET_POSITION);
+    private void writeDataToSheet(List<Suite> nonCRSuites, String toSheet, int position) {
+        this.excelHelper.createSheet(toSheet, position);
+        this.writeHeader(toSheet);
+        this.writeData(toSheet, nonCRSuites);
+        this.formatData(position);
     }
 
-    private void writeHeader() {
-        this.excelHelper.createRow(this.sheetName, HEADER_ROW_IDX, START_COL_IDX, RowData.Header.headers());
-        this.excelHelper.formatRow(this.sheetName, HEADER_ROW_IDX, Arrays.asList(
+    private void writeHeader(String sheetName) {
+        this.excelHelper.createRow(sheetName, HEADER_ROW_IDX, START_COL_IDX, RowData.Header.headers());
+        this.excelHelper.formatRow(sheetName, HEADER_ROW_IDX, Arrays.asList(
             DefinedCellStyle.SET_COLOR_LIGHT_GREEN, DefinedCellStyle.ALIGN_CENTER,
             DefinedCellStyle.WRAP_TEXT, DefinedCellStyle.BORDER_ALL
         ));
 
         // Set column width
-        this.excelHelper.setColumnWidth(this.sheetName, START_COL_IDX, RowData.Header.widths());
+        this.excelHelper.setColumnWidth(sheetName, START_COL_IDX, RowData.Header.widths());
     }
 
     @SneakyThrows
-    private void writeData() {
+    private void writeData(String sheetName, List<Suite> suites) {
         int currentRowIdx = START_ROW_IDX;
-        List<Suite> suites = this.getSuites();
         for (Suite suite : suites) {
             List<Test> tests = this.getTests(suite.getPath());
             String comment = String.join("\n", this.getComments(tests));
             this.excelHelper.createRowWithFormat(
-                this.sheetName, currentRowIdx, START_COL_IDX, new RowData(suite, comment).toList(),
+                sheetName, currentRowIdx, START_COL_IDX, new RowData(suite, comment).toList(),
                 Arrays.asList(DefinedCellStyle.WRAP_TEXT, DefinedCellStyle.TOP_ALIGN, DefinedCellStyle.BORDER_ALL)
             );
             currentRowIdx++;
         }
     }
 
-    private void formatData() {
-        SheetConditionalFormatting sheetCF = this.excelHelper.getSheet(NEW_SHEET_POSITION).getSheetConditionalFormatting();
+    private void formatData(int position) {
+        SheetConditionalFormatting sheetCF = this.excelHelper.getSheet(position).getSheetConditionalFormatting();
 
         // Format FAILED data
         ConditionalFormattingRule ruleFailed = sheetCF.createConditionalFormattingRule(ComparisonOperator.EQUAL, "\"FAILED\"");
