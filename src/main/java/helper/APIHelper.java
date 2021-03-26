@@ -1,7 +1,7 @@
 package helper;
 
-import excel.report.dao.Suite;
-import excel.report.dao.Test;
+import excel.report.dto.Suite;
+import excel.report.dto.Test;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 

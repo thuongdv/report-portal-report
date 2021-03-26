@@ -1,4 +1,4 @@
-package excel.report.dao;
+package excel.report.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

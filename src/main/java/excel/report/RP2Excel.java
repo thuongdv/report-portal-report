@@ -2,13 +2,21 @@ package excel.report;
 
 import enums.DefinedCellStyle;
 import enums.FeatureType;
-import excel.report.dao.Suite;
-import excel.report.dao.Test;
+import excel.report.dto.Suite;
+import excel.report.dto.Test;
 import helper.APIHelper;
 import helper.Constants;
 import helper.ExcelHelper;
-import lombok.*;
-import org.apache.poi.ss.usermodel.*;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.SneakyThrows;
+import lombok.val;
+import org.apache.poi.ss.usermodel.ComparisonOperator;
+import org.apache.poi.ss.usermodel.ConditionalFormattingRule;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.PatternFormatting;
+import org.apache.poi.ss.usermodel.SheetConditionalFormatting;
 import org.apache.poi.ss.util.CellRangeAddress;
 
 import java.util.Arrays;
@@ -34,8 +42,14 @@ public class RP2Excel {
         this.excelHelper = new ExcelHelper(toFile);
 
         List<Suite> suites = this.getSuites();
-        val nonCRSuites = suites.parallelStream().filter(e -> e.getType() == FeatureType.NON_CR).collect(Collectors.toList());
-        val crSuites = suites.parallelStream().filter(e -> e.getType() == FeatureType.CR).collect(Collectors.toList());
+        val nonCRSuites = suites
+            .parallelStream()
+            .filter(e -> e.getType() == FeatureType.NON_CR)
+            .collect(Collectors.toList());
+        val crSuites = suites
+            .parallelStream()
+            .filter(e -> e.getType() == FeatureType.CR)
+            .collect(Collectors.toList());
         this.writeDataToSheet(nonCRSuites, NON_CR_SHEET_NAME, NON_CR_SHEET_POSITION);
         this.writeDataToSheet(crSuites, CR_SHEET_NAME, CR_SHEET_POSITION);
         this.finish();
@@ -77,26 +91,38 @@ public class RP2Excel {
         SheetConditionalFormatting sheetCF = this.excelHelper.getSheet(position).getSheetConditionalFormatting();
 
         // Format FAILED data
-        ConditionalFormattingRule ruleFailed = sheetCF.createConditionalFormattingRule(ComparisonOperator.EQUAL, "\"FAILED\"");
-        PatternFormatting fillFailed = ruleFailed.createPatternFormatting();
-        fillFailed.setFillBackgroundColor(IndexedColors.RED.index);
-        fillFailed.setFillPattern(PatternFormatting.SOLID_FOREGROUND);
-
+        ConditionalFormattingRule ruleFailed = this.createRule(sheetCF, "\"FAILED\"",
+            IndexedColors.RED.index);
         // Format PASSED data
-        ConditionalFormattingRule rulePassed = sheetCF.createConditionalFormattingRule(ComparisonOperator.EQUAL, "\"PASSED\"");
-        PatternFormatting fillPassed = rulePassed.createPatternFormatting();
-        fillPassed.setFillBackgroundColor(IndexedColors.GREEN.index);
-        fillPassed.setFillPattern(PatternFormatting.SOLID_FOREGROUND);
+        ConditionalFormattingRule rulePassed = this.createRule(sheetCF, "\"PASSED\"", IndexedColors.GREEN.index);
+        // Format SKIPPED data
+        ConditionalFormattingRule ruleSkipped = this.createRule(sheetCF, "\"SKIPPED\"",
+            IndexedColors.BLUE_GREY.index);
 
-        ConditionalFormattingRule[] cfRules = new ConditionalFormattingRule[]{ruleFailed, rulePassed};
+        ConditionalFormattingRule[] cfRules = new ConditionalFormattingRule[]{ruleFailed, rulePassed, ruleSkipped};
 
         CellRangeAddress[] regions = new CellRangeAddress[]{CellRangeAddress.valueOf("C2:C120")};
 
         sheetCF.addConditionalFormatting(regions, cfRules);
     }
 
+    private ConditionalFormattingRule createRule(SheetConditionalFormatting sheetCF, String formula,
+                                                 short backgroundColor) {
+        ConditionalFormattingRule rule = sheetCF
+            .createConditionalFormattingRule(ComparisonOperator.EQUAL, formula);
+        PatternFormatting fillSkipped = rule.createPatternFormatting();
+        fillSkipped.setFillBackgroundColor(backgroundColor);
+        fillSkipped.setFillPattern(PatternFormatting.SOLID_FOREGROUND);
+
+        return rule;
+    }
+
+    /**
+     * Get suites
+     * <p>
+     * Call Report Portal's APIs then write data to Data objects
+     */
     private List<Suite> getSuites() {
-        // Call Report Portal's APIs then write data to Data objects
         // filter.eq.launchId=875&filter.level.path=1&page.page=1&page.size=70&page.sort=startTime,ASC
         Map<String, String> query = new HashMap<>();
         query.put("filter.eq.launchId", Constants.LAUNCH_ID);
@@ -110,13 +136,19 @@ public class RP2Excel {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Get tests of a suite
+     * <p>
+     * Call Report Portal's APIs then write data to Data objects
+     *
+     * @param parentId Parent Id
+     */
     private List<Test> getTests(String parentId) {
-        // Call Report Portal's APIs then write data to Data objects
-        // filter.eq.launchId=875&filter.eq.parentId=161810&page.page=1&page.size=50&page.sort=startTime,ASC
+        // filter.eq.launchId=875&filter.eq.parentId=161810&page.page=1&page.size=70&page.sort=startTime,ASC
         Map<String, String> query = new HashMap<>();
         query.put("filter.eq.launchId", Constants.LAUNCH_ID);
         query.put("filter.eq.parentId", String.valueOf(parentId));
-        query.put("filter.in.status", "FAILED,INTERRUPTED");
+        query.put("filter.in.status", "FAILED,INTERRUPTED,SKIPPED");
         query.put("page.page", "1");
         query.put("page.size", "70");
         query.put("page.sort", "startTime,ASC");
@@ -125,7 +157,8 @@ public class RP2Excel {
 
     private List<String> getComments(List<Test> tests) {
         return tests.stream()
-            .map(e -> e.getIssue().getComment())
+            .filter(e -> e.getIssue() != null)
+            .map(Test::getComment)
             .distinct()
             .collect(Collectors.toList());
     }
@@ -147,7 +180,7 @@ public class RP2Excel {
             PASSED("Passed", 10),
             SKIPPED("Failed", 10),
             FAILED("Skipped", 10),
-            BUG("Bug", 30);
+            NOTE("Note", 30);
 
             String title;
             Integer width;
@@ -167,7 +200,7 @@ public class RP2Excel {
         int passed;
         int skipped;
         int failed;
-        String bug;
+        String note;
 
         public RowData(Suite suite, String comment) {
             this.feature = suite.getName();
@@ -176,7 +209,7 @@ public class RP2Excel {
             this.passed = suite.getStatistics().getExecutions().getPassed();
             this.failed = suite.getStatistics().getExecutions().getFailed();
             this.skipped = suite.getStatistics().getExecutions().getSkipped();
-            this.bug = comment;
+            this.note = comment;
         }
 
         public List<String> toList() {
@@ -186,7 +219,7 @@ public class RP2Excel {
                 String.valueOf(this.passed),
                 String.valueOf(this.failed),
                 String.valueOf(this.skipped),
-                this.bug
+                this.note
             );
         }
     }
