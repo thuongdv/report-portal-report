@@ -128,7 +128,7 @@ public class RP2Excel {
         query.put("filter.eq.launchId", Constants.LAUNCH_ID);
         query.put("filter.level.path", "1");
         query.put("page.page", "1");
-        query.put("page.size", "70");
+        query.put("page.size", Constants.PAGE_SIZE);
         query.put("page.sort", "startTime,ASC");
         return APIHelper.getSuites(query)
             .stream()
@@ -150,7 +150,7 @@ public class RP2Excel {
         query.put("filter.eq.parentId", String.valueOf(parentId));
         query.put("filter.in.status", "FAILED,INTERRUPTED,SKIPPED");
         query.put("page.page", "1");
-        query.put("page.size", "70");
+        query.put("page.size", Constants.PAGE_SIZE);
         query.put("page.sort", "startTime,ASC");
         return APIHelper.getTests(query);
     }
